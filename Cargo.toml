@@ -1,0 +1,15 @@
+[package]
+name = "lazyclash"
+version = "0.1.0"
+edition = "2021"
+description = "TUI clash 版本"
+repository = "https://github.com/liuhuo23/lazyclash"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.89"
+color-eyre = "0.6.3"
+crossterm = "0.28.1"
+ratatui = "0.28.1"
