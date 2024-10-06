@@ -45,3 +45,7 @@ tui-input = "*"
 [build-dependencies]
 anyhow = "1.0.86"
 vergen-gix = {version = "1.0.0", features = ["build", "cargo"]}
+
+[[example]]
+name = "scrollbar"
+path = "./examples/scrollbar.rs"

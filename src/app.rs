@@ -1,6 +1,13 @@
+use std::default;
+
 use color_eyre::Result;
-use crossterm::event::KeyEvent;
-use ratatui::prelude::Rect;
+use crossterm::event::{KeyCode, KeyEvent};
+use futures::executor::block_on;
+use ratatui::{
+    layout::{Constraint, Layout},
+    prelude::Rect,
+    widgets::{Block, Padding, Scrollbar, ScrollbarOrientation, ScrollbarState},
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, info};
@@ -9,6 +16,7 @@ use crate::{
     action::Action,
     components::{fps::FpsCounter, home::Home, Component},
     config::Config,
+    menus::{versions::Version, Menu},
     tui::{Event, Tui},
 };
 
@@ -20,6 +28,8 @@ pub struct App {
     should_quit: bool,
     should_suspend: bool,
     mode: Mode,
+    menu_active: MenuActive,
+    menus: Vec<Box<dyn Menu>>,
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
     action_rx: mpsc::UnboundedReceiver<Action>,
@@ -31,6 +41,12 @@ pub enum Mode {
     Home,
 }
 
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MenuActive {
+    #[default]
+    Version,
+}
+
 impl App {
     pub fn new(tick_rate: f64, frame_rate: f64) -> Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
@@ -38,14 +54,30 @@ impl App {
             tick_rate,
             frame_rate,
             components: vec![Box::new(Home::new()), Box::new(FpsCounter::default())],
+            menus: vec![
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+                Box::new(Version::new()),
+            ],
             should_quit: false,
             should_suspend: false,
             config: Config::new()?,
             mode: Mode::Home,
+            menu_active: MenuActive::Version,
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
         })
+    }
+
+    pub fn next(&mut self) {
+        
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -55,14 +87,24 @@ impl App {
             .frame_rate(self.frame_rate);
         tui.enter()?;
 
-        for component in self.components.iter_mut() {
-            component.register_action_handler(self.action_tx.clone())?;
+        // for component in self.components.iter_mut() {
+        //     component.register_action_handler(self.action_tx.clone())?;
+        // }
+        // for component in self.components.iter_mut() {
+        //     component.register_config_handler(self.config.clone())?;
+        // }
+        // for component in self.components.iter_mut() {
+        //     component.init(tui.size()?)?;
+        // }
+        // 加载菜单
+        for menu in self.menus.iter_mut() {
+            menu.register_action_handler(self.action_tx.clone())?;
         }
-        for component in self.components.iter_mut() {
-            component.register_config_handler(self.config.clone())?;
+        for menu in self.menus.iter_mut() {
+            menu.register_config_handler(self.config.clone())?;
         }
-        for component in self.components.iter_mut() {
-            component.init(tui.size()?)?;
+        for menu in self.menus.iter_mut() {
+            menu.init(tui.size()?)?;
         }
 
         let action_tx = self.action_tx.clone();
@@ -102,31 +144,40 @@ impl App {
                 action_tx.send(action)?;
             }
         }
+        for menu in self.menus.iter_mut() {
+            if let Some(action) = menu.handle_events(Some(event.clone()))? {
+                action_tx.send(action)?;
+            }
+        }
         Ok(())
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         let action_tx = self.action_tx.clone();
-        let Some(keymap) = self.config.keybindings.get(&self.mode) else {
-            return Ok(());
-        };
-        match keymap.get(&vec![key]) {
-            Some(action) => {
-                info!("Got action: {action:?}");
-                action_tx.send(action.clone())?;
-            }
+        match key.code {
             _ => {
-                // If the key was not handled as a single key action,
-                // then consider it for multi-key combinations.
-                self.last_tick_key_events.push(key);
+                let Some(keymap) = self.config.keybindings.get(&self.mode) else {
+                    return Ok(());
+                };
+                match keymap.get(&vec![key]) {
+                    Some(action) => {
+                        info!("Got action: {action:?}");
+                        action_tx.send(action.clone())?;
+                    }
+                    _ => {
+                        // If the key was not handled as a single key action,
+                        // then consider it for multi-key combinations.
+                        self.last_tick_key_events.push(key);
 
-                // Check for multi-key combinations
-                if let Some(action) = keymap.get(&self.last_tick_key_events) {
-                    info!("Got action: {action:?}");
-                    action_tx.send(action.clone())?;
+                        // Check for multi-key combinations
+                        if let Some(action) = keymap.get(&self.last_tick_key_events) {
+                            info!("Got action: {action:?}");
+                            action_tx.send(action.clone())?;
+                        };
+                    }
                 }
             }
-        }
+        };
         Ok(())
     }
 
@@ -164,13 +215,35 @@ impl App {
 
     fn render(&mut self, tui: &mut Tui) -> Result<()> {
         tui.draw(|frame| {
-            for component in self.components.iter_mut() {
-                if let Err(err) = component.draw(frame, frame.area()) {
+            let [left_menu, right_detail] =
+                Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
+                    .areas(frame.area());
+            let left_block = Block::bordered()
+                .title("Left Menu")
+                .padding(Padding::new(1, 1, 1, 1));
+            let menus_lines = Layout::vertical(
+                self.menus
+                    .iter()
+                    .map(|m| Constraint::Max(m.get_length()))
+                    .collect::<Vec<Constraint>>(),
+            )
+            .split(left_menu);
+            for (i, menu) in self.menus.iter_mut().enumerate() {
+                if let Err(err) = menu.draw(frame, menus_lines[i]) {
                     let _ = self
                         .action_tx
                         .send(Action::Error(format!("Failed to draw: {:?}", err)));
                 }
             }
+            frame.render_widget(Block::bordered().title("right detail"), right_detail);
+            frame.render_widget(left_block, left_menu);
+            // for component in self.components.iter_mut() {
+            //     if let Err(err) = component.draw(frame, frame.area()) {
+            //         let _ = self
+            //             .action_tx
+            //             .send(Action::Error(format!("Failed to draw: {:?}", err)));
+            //     }
+            // }
         })?;
         Ok(())
     }

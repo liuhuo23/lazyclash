@@ -9,8 +9,10 @@ mod app;
 mod cli;
 mod components;
 mod config;
+mod details;
 mod errors;
 mod logging;
+mod menus;
 mod tui;
 
 #[tokio::main]
