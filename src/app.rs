@@ -16,7 +16,7 @@ use crate::{
     action::Action,
     components::{fps::FpsCounter, home::Home, Component},
     config::Config,
-    menus::{versions::Version, Menu},
+    menus::{versions::Version, Menu, MenuActive},
     tui::{Event, Tui},
 };
 
@@ -28,7 +28,7 @@ pub struct App {
     should_quit: bool,
     should_suspend: bool,
     mode: Mode,
-    menu_active: MenuActive,
+    menu_active: usize,
     menus: Vec<Box<dyn Menu>>,
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
@@ -41,12 +41,6 @@ pub enum Mode {
     Home,
 }
 
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MenuActive {
-    #[default]
-    Version,
-}
-
 impl App {
     pub fn new(tick_rate: f64, frame_rate: f64) -> Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
@@ -55,21 +49,21 @@ impl App {
             frame_rate,
             components: vec![Box::new(Home::new()), Box::new(FpsCounter::default())],
             menus: vec![
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
-                Box::new(Version::new()),
+                Box::new(Version::new(true)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
+                Box::new(Version::new(false)),
             ],
             should_quit: false,
             should_suspend: false,
             config: Config::new()?,
             mode: Mode::Home,
-            menu_active: MenuActive::Version,
+            menu_active: 0,
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
@@ -77,7 +71,13 @@ impl App {
     }
 
     pub fn next(&mut self) {
-        
+        self.menu_active = (self.menu_active + 1) % self.menus.len();
+        self.menus[self.menu_active].set_active(true);
+        for i in 0..self.menus.len() {
+            if i != self.menu_active {
+                self.menus[i].set_active(false);
+            }
+        }
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -155,6 +155,9 @@ impl App {
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         let action_tx = self.action_tx.clone();
         match key.code {
+            KeyCode::Tab => {
+                self.next();
+            }
             _ => {
                 let Some(keymap) = self.config.keybindings.get(&self.mode) else {
                     return Ok(());
@@ -198,11 +201,11 @@ impl App {
                 Action::Render => self.render(tui)?,
                 _ => {}
             }
-            for component in self.components.iter_mut() {
-                if let Some(action) = component.update(action.clone())? {
-                    self.action_tx.send(action)?
-                };
-            }
+            // for component in self.components.iter_mut() {
+            //     if let Some(action) = component.update(action.clone())? {
+            //         self.action_tx.send(action)?
+            //     };
+            // }
         }
         Ok(())
     }
@@ -234,16 +237,18 @@ impl App {
                         .action_tx
                         .send(Action::Error(format!("Failed to draw: {:?}", err)));
                 }
+                if menu.is_active() {
+                    let detail = menu.get_detail();
+                    if let Err(err) = detail.draw(frame, right_detail) {
+                        let _ = self
+                            .action_tx
+                            .send(Action::Error(format!("Failed to draw: {:?}", err)));
+                    }
+                }
             }
+
             frame.render_widget(Block::bordered().title("right detail"), right_detail);
             frame.render_widget(left_block, left_menu);
-            // for component in self.components.iter_mut() {
-            //     if let Err(err) = component.draw(frame, frame.area()) {
-            //         let _ = self
-            //             .action_tx
-            //             .send(Action::Error(format!("Failed to draw: {:?}", err)));
-            //     }
-            // }
         })?;
         Ok(())
     }
