@@ -2,6 +2,8 @@ use crate::details::version_detail::VersionDetail;
 use crate::{action::Action, components::Component};
 use color_eyre::eyre::Ok;
 use color_eyre::eyre::Result;
+use crossterm::event::KeyEvent;
+use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::widgets::Block;
 use ratatui::widgets::Paragraph;
@@ -13,6 +15,9 @@ pub struct Subscribe {
     pub action_tx: Option<UnboundedSender<Action>>,
     pub detail_view: Option<Box<dyn Component>>,
     is_active: bool,
+    last_events: Vec<KeyEvent>,
+    show_input: bool,
+    subscribe_url: Option<String>,
 }
 
 impl Subscribe {
@@ -21,6 +26,9 @@ impl Subscribe {
             detail_view: Some(Box::new(VersionDetail::new())),
             is_active: is_active,
             action_tx: None,
+            last_events: vec![],
+            show_input: false,
+            subscribe_url: None,
         }
     }
 }
@@ -53,4 +61,13 @@ impl Menu for Subscribe {
     fn set_active(&mut self, active: bool) {
         self.is_active = active;
     }
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }

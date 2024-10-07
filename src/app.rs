@@ -16,7 +16,7 @@ use crate::{
     action::Action,
     components::{fps::FpsCounter, home::Home, Component},
     config::Config,
-    menus::{net_state::NetState, versions::Version, Menu, MenuActive},
+    menus::{net_state::NetState, subscribe::Subscribe, versions::Version, Menu, MenuActive},
     tui::{Event, Tui},
 };
 
@@ -51,7 +51,7 @@ impl App {
             menus: vec![
                 Box::new(Version::new(true)),
                 Box::new(Version::new(false)),
-                Box::new(Version::new(false)),
+                Box::new(Subscribe::new(false)),
                 Box::new(Version::new(false)),
                 Box::new(Version::new(false)),
                 Box::new(Version::new(false)),

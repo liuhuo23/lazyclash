@@ -1,5 +1,6 @@
 use crate::{action::Action, components::Component};
 use color_eyre::{owo_colors::OwoColorize, Result};
+use crossterm::event::KeyEvent;
 use ratatui::{layout::Rect, style::Stylize, widgets::Block, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -9,6 +10,7 @@ pub struct NetState {
     is_active: bool,
     pub action_tx: Option<UnboundedSender<Action>>,
     detail_view: Option<Box<dyn Component>>,
+    pub last_events: Vec<KeyEvent>,
 }
 
 impl NetState {
@@ -17,6 +19,7 @@ impl NetState {
             is_active: is_active,
             action_tx: None,
             detail_view: None,
+            last_events: vec![],
         }
     }
 }
