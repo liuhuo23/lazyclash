@@ -9,17 +9,15 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::Menu;
 
-pub struct Version {
-    pub version: String,
+pub struct Subscribe {
     pub action_tx: Option<UnboundedSender<Action>>,
     pub detail_view: Option<Box<dyn Component>>,
     is_active: bool,
 }
 
-impl Version {
+impl Subscribe {
     pub fn new(is_active: bool) -> Self {
         Self {
-            version: "0.0.1".to_string(),
             detail_view: Some(Box::new(VersionDetail::new())),
             is_active: is_active,
             action_tx: None,
@@ -27,21 +25,20 @@ impl Version {
     }
 }
 
-impl Component for Version {
+impl Component for Subscribe {
     fn draw(&mut self, frame: &mut ratatui::Frame, area: ratatui::prelude::Rect) -> Result<()> {
-        let mut block = Block::bordered().title("[Version]");
+        let mut block = Block::bordered().title("[订阅]");
         if self.is_active {
             block = block.white();
         } else {
             block = block.gray();
         }
-        let version = Paragraph::new(self.version.clone()).block(block);
-        frame.render_widget(version, area);
+        frame.render_widget(block, area);
         Ok(())
     }
 }
 
-impl Menu for Version {
+impl Menu for Subscribe {
     fn get_length(&self) -> u16 {
         3
     }

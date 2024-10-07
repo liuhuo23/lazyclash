@@ -16,7 +16,7 @@ use crate::{
     action::Action,
     components::{fps::FpsCounter, home::Home, Component},
     config::Config,
-    menus::{versions::Version, Menu, MenuActive},
+    menus::{net_state::NetState, versions::Version, Menu, MenuActive},
     tui::{Event, Tui},
 };
 
@@ -57,7 +57,7 @@ impl App {
                 Box::new(Version::new(false)),
                 Box::new(Version::new(false)),
                 Box::new(Version::new(false)),
-                Box::new(Version::new(false)),
+                Box::new(NetState::new(false)),
             ],
             should_quit: false,
             should_suspend: false,
@@ -221,16 +221,22 @@ impl App {
             let [left_menu, right_detail] =
                 Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
                     .areas(frame.area());
-            let left_block = Block::bordered()
-                .title("Left Menu")
-                .padding(Padding::new(1, 1, 1, 1));
+            let left_block = Block::bordered();
+            let left_inner = left_block.inner(left_menu);
+            frame.render_widget(left_block, left_menu);
             let menus_lines = Layout::vertical(
                 self.menus
                     .iter()
-                    .map(|m| Constraint::Max(m.get_length()))
+                    .map(|m| {
+                        if m.is_active() {
+                            Constraint::Length(m.get_length())
+                        } else {
+                            Constraint::Max(m.get_length())
+                        }
+                    })
                     .collect::<Vec<Constraint>>(),
             )
-            .split(left_menu);
+            .split(left_inner);
             for (i, menu) in self.menus.iter_mut().enumerate() {
                 if let Err(err) = menu.draw(frame, menus_lines[i]) {
                     let _ = self
@@ -239,16 +245,17 @@ impl App {
                 }
                 if menu.is_active() {
                     let detail = menu.get_detail();
-                    if let Err(err) = detail.draw(frame, right_detail) {
-                        let _ = self
-                            .action_tx
-                            .send(Action::Error(format!("Failed to draw: {:?}", err)));
+                    if let Some(detail) = detail {
+                        if let Err(err) = detail.draw(frame, right_detail) {
+                            let _ = self
+                                .action_tx
+                                .send(Action::Error(format!("Failed to draw: {:?}", err)));
+                        }
                     }
                 }
             }
 
-            frame.render_widget(Block::bordered().title("right detail"), right_detail);
-            frame.render_widget(left_block, left_menu);
+            // frame.render_widget(Block::bordered().title("right detail"), right_detail);
         })?;
         Ok(())
     }
