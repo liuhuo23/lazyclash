@@ -1,12 +1,10 @@
-use std::default;
-
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
-use futures::executor::block_on;
+
 use ratatui::{
     layout::{Constraint, Layout},
     prelude::Rect,
-    widgets::{Block, Padding, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Clear},
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -16,8 +14,9 @@ use crate::{
     action::Action,
     components::{fps::FpsCounter, home::Home, Component},
     config::Config,
-    menus::{net_state::NetState, subscribe::Subscribe, versions::Version, Menu, MenuActive},
+    menus::{net_state::NetState, subscribe::Subscribe, versions::Version, Menu},
     tui::{Event, Tui},
+    utils::popup_area,
 };
 
 pub struct App {
@@ -32,7 +31,9 @@ pub struct App {
     menus: Vec<Box<dyn Menu>>,
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
+    show_popup: bool,
     action_rx: mpsc::UnboundedReceiver<Action>,
+    show_popup_title: String,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -64,9 +65,11 @@ impl App {
             config: Config::new()?,
             mode: Mode::Home,
             menu_active: 0,
+            show_popup: false,
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
+            show_popup_title: "".to_string(),
         })
     }
 
@@ -145,8 +148,10 @@ impl App {
             }
         }
         for menu in self.menus.iter_mut() {
-            if let Some(action) = menu.handle_events(Some(event.clone()))? {
-                action_tx.send(action)?;
+            if menu.is_active() {
+                if let Some(action) = menu.handle_events(Some(event.clone()))? {
+                    action_tx.send(action)?;
+                }
             }
         }
         Ok(())
@@ -197,6 +202,15 @@ impl App {
                 Action::Suspend => self.should_suspend = true,
                 Action::Resume => self.should_suspend = false,
                 Action::ClearScreen => tui.terminal.clear()?,
+                Action::EnterSubscribe => {
+                    self.show_popup_title = "订阅".to_string();
+                    self.show_popup = true
+                }
+                Action::ExitSubscribe(ulr) => {
+                    debug!("{ulr}");
+                    tokio::spawn(async { todo!() });
+                    self.show_popup = false;
+                }
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
                 _ => {}
@@ -254,7 +268,12 @@ impl App {
                     }
                 }
             }
-
+            if self.show_popup {
+                let block = Block::bordered().title(self.show_popup_title.clone());
+                let area = popup_area(frame.area(), 60, 20);
+                frame.render_widget(Clear, area); //this clears out the background
+                frame.render_widget(block, area);
+            }
             // frame.render_widget(Block::bordered().title("right detail"), right_detail);
         })?;
         Ok(())

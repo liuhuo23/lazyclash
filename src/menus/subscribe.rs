@@ -2,12 +2,11 @@ use crate::details::version_detail::VersionDetail;
 use crate::{action::Action, components::Component};
 use color_eyre::eyre::Ok;
 use color_eyre::eyre::Result;
-use crossterm::event::KeyEvent;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
-use ratatui::style::{Style, Stylize};
+use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::style::Stylize;
 use ratatui::widgets::Block;
-use ratatui::widgets::Paragraph;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::{debug, info};
 
 use super::Menu;
 
@@ -16,8 +15,6 @@ pub struct Subscribe {
     pub detail_view: Option<Box<dyn Component>>,
     is_active: bool,
     last_events: Vec<KeyEvent>,
-    show_input: bool,
-    subscribe_url: Option<String>,
 }
 
 impl Subscribe {
@@ -27,8 +24,6 @@ impl Subscribe {
             is_active: is_active,
             action_tx: None,
             last_events: vec![],
-            show_input: false,
-            subscribe_url: None,
         }
     }
 }
@@ -43,6 +38,25 @@ impl Component for Subscribe {
         }
         frame.render_widget(block, area);
         Ok(())
+    }
+
+    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
+        self.action_tx = Some(tx);
+        Ok(())
+    }
+
+    fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<Action>> {
+        self.last_events.push(key);
+        let action = match key.code {
+            KeyCode::Esc => Action::EnterNormal,
+            KeyCode::Enter => Action::EnterNormal,
+            KeyCode::Char('a') => {
+                debug!("EnterSubscribe");
+                Action::EnterSubscribe
+            }
+            _ => Action::Update,
+        };
+        Ok(Some(action))
     }
 }
 
@@ -61,13 +75,4 @@ impl Menu for Subscribe {
     fn set_active(&mut self, active: bool) {
         self.is_active = active;
     }
-}
-
-/// helper function to create a centered rect using up certain percentage of the available rect `r`
-fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
-    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
-    let [area] = vertical.areas(area);
-    let [area] = horizontal.areas(area);
-    area
 }

@@ -122,4 +122,14 @@ pub trait Component {
     ///
     /// * `Result<()>` - An Ok result or an error.
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> Result<()>;
+
+    fn get_popue_method(
+        &mut self,
+        frame: &mut Frame,
+        area: Rect,
+    ) -> Option<fn(frame: &mut Frame, area: Rect)> {
+        let _ = frame;
+        let _ = area;
+        None
+    }
 }

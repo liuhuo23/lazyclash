@@ -14,10 +14,12 @@ pub enum Action {
     Help,
     ToggleShowHelp,
     CompleteInput(String),
-    EnterNormal,
-    EnterInsert,
+    EnterNormal, // 正常模式
+    EnterInsert, // 插入模式
     EnterProcessing,
     ExitProcessing,
     Update,
+    EnterSubscribe,        // 触发订阅
+    ExitSubscribe(String), // 退出订阅
     ClearScreen,
 }

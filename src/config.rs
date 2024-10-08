@@ -21,6 +21,8 @@ pub struct AppConfig {
     pub data_dir: PathBuf,
     #[serde(default)]
     pub config_dir: PathBuf,
+    #[serde(default)]
+    pub subscribe_dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -50,9 +52,11 @@ impl Config {
         let default_config: Config = json5::from_str(CONFIG).unwrap();
         let data_dir = get_data_dir();
         let config_dir = get_config_dir();
+        let subscribe_dir = get_subscribe_dir();
         let mut builder = config::Config::builder()
             .set_default("data_dir", data_dir.to_str().unwrap())?
-            .set_default("config_dir", config_dir.to_str().unwrap())?;
+            .set_default("config_dir", config_dir.to_str().unwrap())?
+            .set_default("subscribe_dir", subscribe_dir.to_str().unwrap())?;
 
         let config_files = [
             ("config.json5", config::FileFormat::Json5),
@@ -114,6 +118,17 @@ pub fn get_config_dir() -> PathBuf {
         proj_dirs.config_local_dir().to_path_buf()
     } else {
         PathBuf::from(".").join(".config")
+    };
+    directory
+}
+
+pub fn get_subscribe_dir() -> PathBuf {
+    let directory = if let Some(s) = DATA_FOLDER.clone() {
+        s.join("subscribe")
+    } else if let Some(proj_dirs) = project_directory() {
+        proj_dirs.data_local_dir().join("subscribe")
+    } else {
+        PathBuf::from(".").join(".data").join("subscribe")
     };
     directory
 }
