@@ -8,8 +8,6 @@ pub trait Menu: Component {
     fn get_length(&self) -> u16 {
         2
     }
-    fn set_active(&mut self, active: bool);
-    fn is_active(&self) -> bool;
     fn get_detail(&mut self) -> &mut Option<Box<dyn Component>>;
 }
 

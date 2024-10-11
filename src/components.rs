@@ -10,7 +10,7 @@ use crate::{action::Action, config::Config, tui::Event};
 
 pub mod fps;
 pub mod home;
-pub mod input;
+pub mod subscribe_input;
 /// `Component` is a trait that represents a visual and interactive element of the user interface.
 ///
 /// Implementors of this trait can be registered with the main application loop and will be able to
@@ -131,5 +131,13 @@ pub trait Component {
         let _ = frame;
         let _ = area;
         None
+    }
+
+    fn set_active(&mut self, is_active: bool) {
+        let _ = is_active;
+    }
+    
+    fn is_active(&self)-> bool {
+        false
     }
 }

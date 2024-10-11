@@ -6,24 +6,34 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::style::Stylize;
 use ratatui::widgets::Block;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, info};
+use tracing::{debug};
 
 use super::Menu;
+
+/// 这是用来标记谁来监听这个事件
+#[derive(Default)]
+enum Mode {
+    #[default]
+    Menu,
+    Detail,
+}
 
 pub struct Subscribe {
     pub action_tx: Option<UnboundedSender<Action>>,
     pub detail_view: Option<Box<dyn Component>>,
     is_active: bool,
     last_events: Vec<KeyEvent>,
+    mode: Mode,
 }
 
 impl Subscribe {
     pub fn new(is_active: bool) -> Self {
         Self {
             detail_view: Some(Box::new(VersionDetail::new())),
-            is_active: is_active,
+            is_active,
             action_tx: None,
             last_events: vec![],
+            mode: Mode::default(),
         }
     }
 }
@@ -48,8 +58,14 @@ impl Component for Subscribe {
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<Action>> {
         self.last_events.push(key);
         let action = match key.code {
-            KeyCode::Esc => Action::EnterNormal,
-            KeyCode::Enter => Action::EnterNormal,
+            KeyCode::Esc => {
+                self.mode = Mode::Menu;
+                Action::EnterNormal
+            }
+            KeyCode::Enter => {
+                self.mode = Mode::Detail;
+                Action::Update
+            }
             KeyCode::Char('a') => {
                 debug!("EnterSubscribe");
                 Action::EnterSubscribe
@@ -57,6 +73,12 @@ impl Component for Subscribe {
             _ => Action::Update,
         };
         Ok(Some(action))
+    }
+    fn is_active(&self) -> bool {
+        self.is_active
+    }
+    fn set_active(&mut self, active: bool) {
+        self.is_active = active;
     }
 }
 
@@ -69,10 +91,5 @@ impl Menu for Subscribe {
         &mut self.detail_view
     }
 
-    fn is_active(&self) -> bool {
-        self.is_active
-    }
-    fn set_active(&mut self, active: bool) {
-        self.is_active = active;
-    }
+    
 }

@@ -35,19 +35,17 @@ impl Component for NetState {
         frame.render_widget(block, area);
         Ok(())
     }
+    fn is_active(&self) -> bool {
+        self.is_active
+    }
+    fn set_active(&mut self, active: bool) {
+        self.is_active = active;
+    }
 }
 
 impl Menu for NetState {
     fn get_length(&self) -> u16 {
         20
-    }
-
-    fn set_active(&mut self, active: bool) {
-        self.is_active = active;
-    }
-
-    fn is_active(&self) -> bool {
-        self.is_active
     }
 
     fn get_detail(&mut self) -> &mut Option<Box<dyn Component>> {

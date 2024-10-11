@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::Component;
 use crate::{
     action::Action,
-    config::{key_event_to_string, Config},
+    config::{Config},
 };
 use color_eyre::{eyre::Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent};

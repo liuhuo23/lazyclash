@@ -1,10 +1,11 @@
 use crate::action::Action;
+use crate::utils::popup_area;
 use color_eyre::{eyre::Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info};
+use tracing::{debug, info};
 
 use super::Component;
 
@@ -16,21 +17,22 @@ enum Mode {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct LInput<'a> {
+pub struct SubInput {
     value: String,
     pub action_tx: Option<UnboundedSender<Action>>,
     pub keymap: HashMap<KeyEvent, Action>,
-    pub text: Vec<String>,
+    pub text: String,
     pub last_events: Vec<KeyEvent>,
     pub is_multiline: bool,
     pub mode: Mode,
-    pub block: Block<'a>,
+    pub is_active: bool,
 }
 
-impl<'a> LInput<'a> {
+impl SubInput {
     fn new() -> Self {
         Self {
             is_multiline: false,
+            is_active: false,
             ..Default::default()
         }
     }
@@ -44,15 +46,18 @@ impl<'a> LInput<'a> {
     }
 }
 
-impl<'a> Component for LInput<'a> {
+impl Component for SubInput {
     fn draw(&mut self, frame: &mut Frame, area: ratatui::prelude::Rect) -> Result<()> {
-        let input = Paragraph::new(self.value.as_str())
-            .style(match self.mode {
-                Mode::Normal => Style::default(),
-                Mode::Editting => Style::default().fg(Color::Yellow),
-            })
-            .block(self.block.clone());
-        frame.render_widget(input, area);
+        let block = Block::bordered().title("订阅");
+        let area = popup_area(frame.area(), 60, 20);
+        let uri = Line::raw(self.value.clone());
+        let paragraph = Paragraph::new(uri)
+            .gray()
+            .block(block)
+            .left_aligned()
+            .wrap(Wrap { trim: true });
+        frame.render_widget(Clear, area); //this clears out the background
+        frame.render_widget(paragraph, area);
         Ok(())
     }
 
@@ -63,7 +68,7 @@ impl<'a> Component for LInput<'a> {
             Mode::Editting => match key.code {
                 KeyCode::Esc => {
                     self.mode = Mode::Normal;
-                    Action::EnterNormal
+                    Action::Update
                 }
                 KeyCode::Enter => {
                     if !self.is_multiline {
@@ -92,5 +97,36 @@ impl<'a> Component for LInput<'a> {
             },
         };
         Ok(Some(action))
+    }
+
+    fn update(&mut self, action: Action) -> Result<Option<Action>> {
+        match self.mode {
+            Mode::Normal => {
+                match action {
+                    Action::EnterSubscribe if !self.is_active => {
+                        self.is_active = true;
+                        self.mode = Mode::Editting;
+                    }
+                    Action::EnterSubscribe if self.is_active => {
+                        self.is_active = false;
+                    }
+                    Action::ExitSubscribe(ulr) => {
+                        debug!("{ulr}");
+                        tokio::spawn(async { todo!() });
+                    }
+                    _ => {}
+                };
+            }
+            _ => {}
+        };
+        Ok(None)
+    }
+
+    fn is_active(&self) -> bool {
+        self.is_active
+    }
+
+    fn set_active(&mut self, is_active: bool) {
+        self.is_active = is_active;
     }
 }

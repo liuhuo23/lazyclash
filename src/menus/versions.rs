@@ -21,7 +21,7 @@ impl Version {
         Self {
             version: "0.0.1".to_string(),
             detail_view: Some(Box::new(VersionDetail::new())),
-            is_active: is_active,
+            is_active,
             action_tx: None,
         }
     }
@@ -39,6 +39,13 @@ impl Component for Version {
         frame.render_widget(version, area);
         Ok(())
     }
+    
+    fn is_active(&self) -> bool {
+        self.is_active
+    }
+    fn set_active(&mut self, active: bool) {
+        self.is_active = active;
+    }
 }
 
 impl Menu for Version {
@@ -48,12 +55,5 @@ impl Menu for Version {
 
     fn get_detail(&mut self) -> &mut Option<Box<dyn Component>> {
         &mut self.detail_view
-    }
-
-    fn is_active(&self) -> bool {
-        self.is_active
-    }
-    fn set_active(&mut self, active: bool) {
-        self.is_active = active;
     }
 }

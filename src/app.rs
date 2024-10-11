@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -12,11 +14,10 @@ use tracing::{debug, info};
 
 use crate::{
     action::Action,
-    components::{fps::FpsCounter, home::Home, Component},
+    components::{fps::FpsCounter, subscribe_input::SubInput, Component},
     config::Config,
     menus::{net_state::NetState, subscribe::Subscribe, versions::Version, Menu},
     tui::{Event, Tui},
-    utils::popup_area,
 };
 
 pub struct App {
@@ -48,7 +49,10 @@ impl App {
         Ok(Self {
             tick_rate,
             frame_rate,
-            components: vec![Box::new(Home::new()), Box::new(FpsCounter::default())],
+            components: vec![
+                Box::new(SubInput::default()),
+                Box::new(FpsCounter::default()),
+            ],
             menus: vec![
                 Box::new(Version::new(true)),
                 Box::new(Version::new(false)),
@@ -90,15 +94,15 @@ impl App {
             .frame_rate(self.frame_rate);
         tui.enter()?;
 
-        // for component in self.components.iter_mut() {
-        //     component.register_action_handler(self.action_tx.clone())?;
-        // }
-        // for component in self.components.iter_mut() {
-        //     component.register_config_handler(self.config.clone())?;
-        // }
-        // for component in self.components.iter_mut() {
-        //     component.init(tui.size()?)?;
-        // }
+        for component in self.components.iter_mut() {
+            component.register_action_handler(self.action_tx.clone())?;
+        }
+        for component in self.components.iter_mut() {
+            component.register_config_handler(self.config.clone())?;
+        }
+        for component in self.components.iter_mut() {
+            component.init(tui.size()?)?;
+        }
         // 加载菜单
         for menu in self.menus.iter_mut() {
             menu.register_action_handler(self.action_tx.clone())?;
@@ -156,7 +160,7 @@ impl App {
         }
         Ok(())
     }
-
+    // 处理按键
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         let action_tx = self.action_tx.clone();
         match key.code {
@@ -202,24 +206,15 @@ impl App {
                 Action::Suspend => self.should_suspend = true,
                 Action::Resume => self.should_suspend = false,
                 Action::ClearScreen => tui.terminal.clear()?,
-                Action::EnterSubscribe => {
-                    self.show_popup_title = "订阅".to_string();
-                    self.show_popup = true
-                }
-                Action::ExitSubscribe(ulr) => {
-                    debug!("{ulr}");
-                    tokio::spawn(async { todo!() });
-                    self.show_popup = false;
-                }
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
                 _ => {}
             }
-            // for component in self.components.iter_mut() {
-            //     if let Some(action) = component.update(action.clone())? {
-            //         self.action_tx.send(action)?
-            //     };
-            // }
+            for component in self.components.iter_mut() {
+                if let Some(action) = component.update(action.clone())? {
+                    self.action_tx.send(action)?
+                };
+            }
         }
         Ok(())
     }
@@ -268,12 +263,22 @@ impl App {
                     }
                 }
             }
-            if self.show_popup {
-                let block = Block::bordered().title(self.show_popup_title.clone());
-                let area = popup_area(frame.area(), 60, 20);
-                frame.render_widget(Clear, area); //this clears out the background
-                frame.render_widget(block, area);
+            for comment in self.components.iter_mut() {
+                if !comment.is_active() {
+                    continue;
+                }
+                if let Err(err) = comment.draw(frame, frame.area()) {
+                    let _ = self
+                        .action_tx
+                        .send(Action::Error(format!("Failed to draw: {:?}", err)));
+                }
             }
+            // if self.show_popup {
+            //     let block = Block::bordered().title(self.show_popup_title.clone());
+            //     let area = popup_area(frame.area(), 60, 20);
+            //     frame.render_widget(Clear, area); //this clears out the background
+            //     frame.render_widget(block, area);
+            // }
             // frame.render_widget(Block::bordered().title("right detail"), right_detail);
         })?;
         Ok(())
