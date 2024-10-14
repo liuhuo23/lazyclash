@@ -209,3 +209,35 @@ impl App {
         );
     }
 }
+
+#[cfg(test)]
+mod test {
+    enum Message {
+        Cut,
+        Copy,
+        Delete,
+    }
+    enum Event {
+        C,
+        V,
+        Backend,
+    }
+    impl From<Event> for Message {
+        fn from(value: Event) -> Self {
+            match value {
+                Event::C => Message::Copy,
+                Event::Backend => Message::Delete,
+                Event::V => Message::Cut,
+            }
+        }
+    }
+    fn handle_message(message: Message) {
+        println!("");
+    }
+    #[test]
+    fn test_from() {
+        let event = Event::C;
+        // let message: Message = event.into();
+        handle_message(event.into());
+    }
+}
