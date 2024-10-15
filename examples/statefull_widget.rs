@@ -29,108 +29,9 @@ fn main() -> io::Result<()> {
 pub struct App {
     counter: u8,
     exit: bool,
-    horization: u16,
     vertrail: u16,
     input_state: InputState,
-}
-
-fn message(event: Event) -> Message {
-    match event {
-        Event::FocusGained => Message::Focus,
-        Event::FocusLost => Message::RemoveFocus,
-        Event::Key(key) => key_message(key.clone()),
-        Event::Mouse(_) => Message::Empty,
-        Event::Paste(str) => Message::Paste(str),
-        Event::Resize(_, _) => Message::Empty,
-    }
-}
-
-fn key_message(value: KeyEvent) -> Message {
-    if value.kind == KeyEventKind::Release {
-        Message::Empty
-    } else {
-        match value.code {
-            KeyCode::Backspace => Message::DeleteBeforeCursor,
-            KeyCode::Enter => Message::RemoveFocus,
-            KeyCode::Left => {
-                if value.modifiers == KeyModifiers::SHIFT {
-                    Message::MoveLeftWithSelection
-                } else {
-                    Message::MoveLeft
-                }
-            }
-            KeyCode::Right => {
-                if value.modifiers == KeyModifiers::SHIFT {
-                    Message::MoveRightWithSelection
-                } else {
-                    Message::MoveRight
-                }
-            }
-            KeyCode::Up => Message::Empty,
-            KeyCode::Down => Message::Empty,
-            KeyCode::Home => {
-                if value.modifiers == KeyModifiers::SHIFT {
-                    Message::JumpToStartWithSelection
-                } else {
-                    Message::JumpToStart
-                }
-            }
-            KeyCode::End => {
-                if value.modifiers == KeyModifiers::SHIFT {
-                    Message::JumpToEndWithSelection
-                } else {
-                    Message::JumpToEnd
-                }
-            }
-            KeyCode::PageUp => Message::Empty,
-            KeyCode::PageDown => Message::Empty,
-            KeyCode::Tab => Message::Char('\t'),
-            KeyCode::BackTab => Message::Empty,
-            KeyCode::Delete => Message::DeleteOnCursor,
-            KeyCode::Insert => Message::ToggleInsertMode,
-            KeyCode::F(_) => Message::Empty,
-            KeyCode::Char(c) => match c {
-                'c' => {
-                    if value.modifiers == KeyModifiers::CONTROL {
-                        Message::Copy
-                    } else {
-                        Message::Char('c')
-                    }
-                }
-                'x' => {
-                    if value.modifiers == KeyModifiers::CONTROL {
-                        Message::Cut
-                    } else {
-                        Message::Char('x')
-                    }
-                }
-                'v' => {
-                    if value.modifiers == KeyModifiers::CONTROL {
-                        match clipboard::ClipboardContext::new()
-                            .and_then(|mut cc| cc.get_contents())
-                        {
-                            Ok(str) => Message::Paste(str),
-                            Err(_) => Message::Empty,
-                        }
-                    } else {
-                        Message::Char('v')
-                    }
-                }
-                c => Message::Char(c),
-            },
-            KeyCode::Null => Message::Empty,
-            KeyCode::Esc => Message::RemoveFocus,
-            KeyCode::CapsLock => Message::Empty,
-            KeyCode::ScrollLock => Message::Empty,
-            KeyCode::NumLock => Message::Empty,
-            KeyCode::PrintScreen => Message::Empty,
-            KeyCode::Pause => Message::Empty,
-            KeyCode::Menu => Message::Empty,
-            KeyCode::KeypadBegin => Message::Empty,
-            KeyCode::Media(_) => Message::Empty,
-            KeyCode::Modifier(_) => Message::Empty,
-        }
-    }
+    input_mode: Mode,
 }
 
 impl App {
@@ -162,7 +63,6 @@ impl App {
 
     fn handle_events(&mut self) -> io::Result<()> {
         let read_event = event::read()?;
-        let message = message(read_event.clone());
         if let event::Event::Key(key) = read_event.clone() {
             if key.kind == KeyEventKind::Press {
                 match key.code {
@@ -177,7 +77,7 @@ impl App {
                         self.vertrail = self.vertrail.saturating_add(1);
                     }
                     KeyCode::Esc => {}
-                    _ => self.input_state.handle_message(message),
+                    _ => self.input_state.handle_message(read_event.into()),
                 };
             }
         };
@@ -221,13 +121,12 @@ impl Widget for &App {
 struct MyWidget<'a> {
     content: String,
     block: Option<Block<'a>>,
-    input: Input,
 }
 
 #[derive(Debug, Default)]
 enum Mode {
-    #[default]
     Input,
+    #[default]
     Normal,
 }
 
@@ -274,6 +173,7 @@ impl<'a> StatefulWidget for MyWidget<'a> {
             self.content.clone(),
             Style::default().fg(Color::Red),
         );
+        let b = Block::bordered().title("输入");
         if let Some(b) = self.block {
             b.render(area, buf);
         }

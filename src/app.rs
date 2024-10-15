@@ -19,7 +19,12 @@ use crate::{
     menus::{net_state::NetState, subscribe::Subscribe, versions::Version, Menu},
     tui::{Event, Tui},
 };
-
+#[derive(Default)]
+pub enum InputMode {
+    #[default]
+    Normal,
+    Input,
+}
 pub struct App {
     config: Config,
     tick_rate: f64,
@@ -32,9 +37,8 @@ pub struct App {
     menus: Vec<Box<dyn Menu>>,
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
-    show_popup: bool,
     action_rx: mpsc::UnboundedReceiver<Action>,
-    show_popup_title: String,
+    input_mode: InputMode,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -69,11 +73,10 @@ impl App {
             config: Config::new()?,
             mode: Mode::Home,
             menu_active: 0,
-            show_popup: false,
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
-            show_popup_title: "".to_string(),
+            input_mode: InputMode::default(),
         })
     }
 
@@ -168,24 +171,41 @@ impl App {
                 self.next();
             }
             _ => {
-                let Some(keymap) = self.config.keybindings.get(&self.mode) else {
-                    return Ok(());
-                };
-                match keymap.get(&vec![key]) {
-                    Some(action) => {
-                        info!("Got action: {action:?}");
-                        action_tx.send(action.clone())?;
+                match self.input_mode {
+                    InputMode::Normal => {
+                        debug!("Normal");
+                        if key.code == KeyCode::Char('i') {
+                            self.input_mode = InputMode::Input;
+                        } else {
+                            let Some(keymap) = self.config.keybindings.get(&self.mode) else {
+                                return Ok(());
+                            };
+                            match keymap.get(&vec![key]) {
+                                Some(action) => {
+                                    info!("Got action: {action:?}");
+                                    action_tx.send(action.clone())?;
+                                }
+                                _ => {
+                                    // If the key was not handled as a single key action,
+                                    // then consider it for multi-key combinations.
+                                    self.last_tick_key_events.push(key);
+
+                                    // Check for multi-key combinations
+                                    if let Some(action) = keymap.get(&self.last_tick_key_events) {
+                                        info!("Got action: {action:?}");
+                                        action_tx.send(action.clone())?;
+                                    };
+                                }
+                            }
+                        }
                     }
-                    _ => {
+                    InputMode::Input => {
                         // If the key was not handled as a single key action,
                         // then consider it for multi-key combinations.
                         self.last_tick_key_events.push(key);
-
-                        // Check for multi-key combinations
-                        if let Some(action) = keymap.get(&self.last_tick_key_events) {
-                            info!("Got action: {action:?}");
-                            action_tx.send(action.clone())?;
-                        };
+                        if key.code == KeyCode::Esc {
+                            self.input_mode = InputMode::Normal;
+                        }
                     }
                 }
             }
@@ -208,6 +228,8 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
+                Action::EnterInput => self.input_mode = InputMode::Input,
+                Action::ExitInput => self.input_mode = InputMode::Normal,
                 _ => {}
             }
             for component in self.components.iter_mut() {

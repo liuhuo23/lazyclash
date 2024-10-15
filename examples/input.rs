@@ -5,7 +5,7 @@ use ratatui::{
     style::{Color, Style, Stylize},
     symbols::scrollbar,
     text::{Line, Masked, Span},
-    widgets::{Block, Paragraph, StatefulWidget},
+    widgets::{block::Title, Block, Paragraph, StatefulWidget},
     DefaultTerminal, Frame,
 };
 use ratatui_input::{Input, InputState};
@@ -73,8 +73,13 @@ impl App {
         let area = frame.area();
         let chunks = Layout::vertical(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
             .split(area);
+        let mut title = Title::from("输入");
+        match self.app_state {
+            AppState::Input => title = Title::from("输入*"),
+            _ => {}
+        }
         let input = Input::default();
-        let b = Block::bordered().title("输入");
+        let b = Block::bordered().title(title);
         let inner_area = b.inner(chunks[0]);
         frame.render_widget(b, chunks[0]);
         frame.render_stateful_widget(input, inner_area, &mut self.input_state);

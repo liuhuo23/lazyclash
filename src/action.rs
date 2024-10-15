@@ -21,4 +21,6 @@ pub enum Action {
     EnterSubscribe,        // 触发订阅
     ExitSubscribe(String), // 退出订阅
     ClearScreen,
+    EnterInput,
+    ExitInput,
 }

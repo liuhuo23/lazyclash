@@ -3,6 +3,7 @@ use crate::utils::popup_area;
 use color_eyre::{eyre::Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
+use ratatui_input::{Input, InputState};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, info};
@@ -16,20 +17,17 @@ enum Mode {
     Editting,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct SubInput {
-    value: String,
     pub action_tx: Option<UnboundedSender<Action>>,
     pub keymap: HashMap<KeyEvent, Action>,
-    pub text: String,
     pub last_events: Vec<KeyEvent>,
     pub is_multiline: bool,
     pub mode: Mode,
     pub horizontal_scroll_state: ScrollbarState,
     pub horizontal_scroll: usize,
     pub is_active: bool,
-    pub char_index: u16,
-    pub postion: u16,
+    pub input_state: InputState,
 }
 
 impl SubInput {
@@ -42,57 +40,23 @@ impl SubInput {
     }
 
     fn get_value(&self) -> String {
-        self.value.clone()
+        self.input_state.text().to_string()
     }
 
     fn submit(&mut self, func: fn(v: &mut String) -> Result<()>) -> Result<()> {
-        func(&mut self.value)
+        func(&mut self.get_value())
     }
 }
 
 impl Component for SubInput {
-    fn draw(&mut self, frame: &mut Frame, area: ratatui::prelude::Rect) -> Result<()> {
+    fn draw(&mut self, frame: &mut Frame, _area: ratatui::prelude::Rect) -> Result<()> {
         let block = Block::bordered().title("订阅");
         let area = popup_area(frame.area(), 60, 10);
-        let uri = Line::raw(self.value.clone());
-        let paragraph = Paragraph::new(uri)
-            .gray()
-            .block(block)
-            .left_aligned()
-            // .wrap(Wrap { trim: true })
-            .scroll((0, self.horizontal_scroll as u16));
         frame.render_widget(Clear, area);
-        frame.render_widget(paragraph, area);
-        match self.mode {
-            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-            Mode::Normal => {}
-
-            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-            // rendering
-            #[allow(clippy::cast_possible_truncation)]
-            Mode::Editting => {
-                if self.postion >= area.width - 3 {
-                    self.postion = area.width - 3;
-                }
-                frame.set_cursor_position(Position::new(
-                    // Draw the cursor at the current position in the input field.
-                    // This position is can be controlled via the left and right arrow key
-                    area.x + self.postion as u16 + 1,
-                    // Move one line down, from the border to the input line
-                    area.y + 1,
-                ));
-            }
-        };
-        frame.render_stateful_widget(
-            Scrollbar::new(ScrollbarOrientation::HorizontalBottom)
-                .begin_symbol(Some("⬅️"))
-                .end_symbol(Some("➡️")),
-            area.inner(Margin {
-                vertical: 0,
-                horizontal: 1,
-            }),
-            &mut self.horizontal_scroll_state,
-        );
+        let input = Input::default();
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
+        frame.render_stateful_widget(input, inner_area, &mut self.input_state);
         Ok(())
     }
 
@@ -103,54 +67,12 @@ impl Component for SubInput {
             Mode::Editting => match key.code {
                 KeyCode::Esc => {
                     self.mode = Mode::Normal;
+                    Action::ExitInput
+                }
+                _ => {
+                    self.input_state.handle_message(key.into());
                     Action::Update
                 }
-                KeyCode::Enter => {
-                    if !self.is_multiline {
-                        self.mode = Mode::Normal;
-                        self.submit(|v| {
-                            info!("{}", v);
-                            Ok(())
-                        })?;
-                        Action::EnterNormal
-                    } else {
-                        self.value.push('\n');
-                        Action::Update
-                    }
-                }
-                KeyCode::Left => {
-                    self.horizontal_scroll = self.horizontal_scroll.saturating_sub(1);
-                    self.horizontal_scroll_state = self
-                        .horizontal_scroll_state
-                        .position(self.horizontal_scroll);
-                    Action::Update
-                }
-                KeyCode::Right => {
-                    if self.postion < self.value.len() as u16 {
-                        self.horizontal_scroll = self.horizontal_scroll.saturating_add(1);
-                        self.horizontal_scroll_state = self
-                            .horizontal_scroll_state
-                            .position(self.horizontal_scroll);
-                    }
-                    self.postion = self.postion.saturating_add(1);
-                    if self.char_index < self.value.len() as u16 {
-                        self.char_index = self.char_index.saturating_add(1);
-                    }
-                    Action::Update
-                }
-                KeyCode::Backspace => {
-                    self.value.pop();
-                    self.postion = self.postion.saturating_sub(1);
-                    self.char_index = self.char_index.saturating_sub(1);
-                    Action::Update
-                }
-                KeyCode::Char(v) => {
-                    self.value.push(v);
-                    self.postion = self.postion.saturating_add(1);
-                    self.char_index = self.char_index.saturating_add(1);
-                    Action::Update
-                }
-                _ => Action::Update,
             },
         };
         Ok(Some(action))
