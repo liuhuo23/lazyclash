@@ -14,10 +14,9 @@ pub enum Action {
     Help,
     ToggleShowHelp,
     CompleteInput(String),
-    EnterNormal, // 正常模式
-    EnterInsert, // 插入模式
-    EnterProcessing,
-    ExitProcessing,
+    EnterNormal,        // 正常模式
+    EnterInsert,        // 插入模式
+    ExitInsert(String), // 退出插入模式
     Update,
     EnterSubscribe,        // 触发订阅
     ExitSubscribe(String), // 退出订阅

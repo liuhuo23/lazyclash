@@ -1,16 +1,12 @@
 use std::collections::HashMap;
 
 use super::Component;
-use crate::{
-    action::Action,
-    config::{Config},
-};
+use crate::{action::Action, config::Config};
 use color_eyre::{eyre::Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
-use tui_input::{backend::crossterm::EventHandler, Input};
 
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum Mode {
@@ -26,7 +22,7 @@ pub struct Home {
     config: Config,
     pub show_help: bool,
     pub mode: Mode,
-    pub input: Input,
+    // pub input: Input,
     pub action_tx: Option<UnboundedSender<Action>>,
     pub keymap: HashMap<KeyEvent, Action>,
     pub text: Vec<String>,
@@ -67,12 +63,6 @@ impl Component for Home {
             }
             Action::EnterInsert => {
                 self.mode = Mode::Insert;
-            }
-            Action::EnterProcessing => {
-                self.mode = Mode::Processing;
-            }
-            Action::ExitProcessing => {
-                self.mode = Mode::Normal;
             }
             _ => {}
         }
@@ -249,20 +239,10 @@ impl Component for Home {
             Mode::Insert => match key.code {
                 KeyCode::Esc => Action::EnterNormal,
                 KeyCode::Enter => {
-                    if let Some(sender) = &self.action_tx {
-                        if let Err(e) =
-                            sender.send(Action::CompleteInput(self.input.value().to_string()))
-                        {
-                            error!("Failed to send action: {:?}", e);
-                        }
-                    }
+                    if let Some(sender) = &self.action_tx {}
                     Action::EnterNormal
                 }
-                _ => {
-                    self.input
-                        .handle_event(&ratatui::crossterm::event::Event::Key(key));
-                    Action::Update
-                }
+                _ => Action::Update,
             },
         };
         Ok(Some(action))
