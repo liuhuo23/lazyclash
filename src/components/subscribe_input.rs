@@ -63,7 +63,7 @@ impl Component for SubInput {
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<Action>> {
         self.last_events.push(key);
         let action = match self.mode {
-            Mode::Normal => return Ok(None),
+            Mode::Normal => Action::EnterInput,
             Mode::Editting => match key.code {
                 KeyCode::Esc => {
                     self.mode = Mode::Normal;
@@ -79,22 +79,14 @@ impl Component for SubInput {
     }
 
     fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match self.mode {
-            Mode::Normal => {
-                match action {
-                    Action::EnterSubscribe if !self.is_active => {
-                        self.is_active = true;
-                        self.mode = Mode::Editting;
-                    }
-                    Action::EnterSubscribe if self.is_active => {
-                        self.is_active = false;
-                    }
-                    Action::ExitSubscribe(ulr) => {
-                        debug!("{ulr}");
-                        tokio::spawn(async { todo!() });
-                    }
-                    _ => {}
-                };
+        match action {
+            Action::EnterSubscribe if !self.is_active => {
+                self.is_active = true;
+                self.mode = Mode::Editting;
+            }
+            Action::ExitSubscribe(ulr) => {
+                debug!("{ulr}");
+                tokio::spawn(async { todo!() });
             }
             _ => {}
         };
@@ -107,5 +99,10 @@ impl Component for SubInput {
 
     fn set_active(&mut self, is_active: bool) {
         self.is_active = is_active;
+    }
+
+    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
+        self.action_tx = Some(tx);
+        Ok(())
     }
 }

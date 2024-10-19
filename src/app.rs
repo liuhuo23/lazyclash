@@ -176,6 +176,8 @@ impl App {
                         debug!("Normal");
                         if key.code == KeyCode::Char('i') {
                             self.input_mode = InputMode::Input;
+                        } else if key.code == KeyCode::Char('q') {
+                            action_tx.send(Action::Quit);
                         } else {
                             let Some(keymap) = self.config.keybindings.get(&self.mode) else {
                                 return Ok(());
@@ -200,9 +202,10 @@ impl App {
                         }
                     }
                     InputMode::Input => {
-                        // If the key was not handled as a single key action,
+                        // If the key  was not handled as a single key action,
                         // then consider it for multi-key combinations.
                         self.last_tick_key_events.push(key);
+                        debug!("key:{:?}", key);
                         if key.code == KeyCode::Esc {
                             self.input_mode = InputMode::Normal;
                         }
