@@ -61,3 +61,12 @@ path = "./examples/statefull_widget.rs"
 [[example]]
 name = "input"
 path = "./examples/input.rs"
+
+
+[[example]]
+name = "action"
+path = "./examples/action_run.rs"
+
+[[example]]
+name = "docs"
+path = "./examples/docs.rs"
