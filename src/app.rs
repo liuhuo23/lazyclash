@@ -1,11 +1,11 @@
 use crate::{
     config::Config,
-    menu::{subscription::SubScription, version::Version, Menu},
+    menu::{subscription::SubScription, version::Version},
     mode::Mode,
+    view::View,
 };
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
-use futures::SinkExt;
 use ratatui::crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -24,7 +24,7 @@ pub struct App {
     should_quit: bool,
     menu_index: i32,
     mode: Mode,
-    menus: Vec<Box<dyn Menu>>,
+    menus: Vec<Box<dyn View>>,
     info: String,
 }
 
@@ -36,8 +36,8 @@ impl App {
             menu_index: 0,
             mode: Mode::Version,
             menus: vec![
-                Box::new(Version::default()),
-                Box::new(SubScription::default()),
+                Box::new(Version::new()),
+                Box::new(SubScription::new()),
             ],
             info: "提示信息".to_string(),
         })
@@ -114,16 +114,25 @@ impl App {
             self.handle_events().await?;
         }
         self.exit()?;
+        debug!("程序退出");
         Ok(())
     }
 
-    fn current_menus(&mut self) -> &mut Box<dyn Menu> {
+    fn current_menus(&mut self) -> &mut Box<dyn View> {
         &mut self.menus[self.menu_index as usize]
     }
 
     async fn handle_events(&mut self) -> Result<()> {
-        if let Event::Key(key) = event::read()? {
+        let mut event = Some(event::read()?);
+        for menu in self.menus.iter_mut() {
+            if menu.is_focus() {
+                event = menu.handle_event(event.unwrap().clone());
+                
+            }
+        }
+        if let Some(Event::Key(key)) = event {
             if key.kind == event::KeyEventKind::Press {
+                debug!("开始处理:{:?}", key.code);
                 match key.code {
                     KeyCode::Char('q') => {
                         self.should_quit = true;
@@ -147,26 +156,27 @@ impl App {
 
     fn draw(&mut self, f: &mut Frame) {
         let [main, status] =
-            Layout::vertical([Constraint::Percentage(90), Constraint::Max(10)]).areas(f.area());
+            Layout::vertical([Constraint::Percentage(90), Constraint::Max(3)]).areas(f.area());
         let [left_panel, rigth_panel] =
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
                 .areas(main);
 
         self.draw_left(f, left_panel);
         self.draw_right(f, rigth_panel);
-        let p = Paragraph::new(format!(
-            "当前name: {}, focus: {}",
-            self.info.clone(),
-            self.current_menus().is_focus()
-        ));
-        f.render_widget(p, status);
+        self.draw_bottom_info(f, status);
     }
 
     fn draw_left(&mut self, f: &mut Frame, area: Rect) {
         let chunks = Layout::vertical(
             self.menus
                 .iter()
-                .map(|_| Constraint::Length(10))
+                .map(|m| {
+                    if m.is_focus() {
+                        Constraint::Length(m.length())
+                    } else {
+                        Constraint::Length(5)
+                    }
+                })
                 .collect::<Vec<Constraint>>(),
         )
         .split(area);
@@ -175,7 +185,20 @@ impl App {
         }
     }
     fn draw_right(&mut self, f: &mut Frame, area: Rect) {
+        let b = Block::bordered();
+        let inner_area = b.inner(area);
         let index: i32 = self.mode.into();
-        self.menus[index as usize].draw_detail(f, area);
+        f.render_widget(b, area);
+        self.menus[index as usize].draw_detail(f, inner_area);
+    }
+
+    fn draw_bottom_info(&mut self, f: &mut Frame, area: Rect) {
+        let p = Paragraph::new(format!(
+            "当前name: {}, focus: {}",
+            self.info.clone(),
+            self.current_menus().is_focus()
+        ))
+        .block(Block::bordered());
+        f.render_widget(p, area);
     }
 }

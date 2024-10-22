@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::menu::Menu;
+use crate::view::View;
 #[derive(Default)]
 pub struct Version {
     focus: bool,
@@ -18,7 +18,7 @@ impl Version {
     }
 }
 
-impl Menu for Version {
+impl View for Version {
     fn draw_menu(&mut self, f: &mut Frame, area: Rect) {
         let mut b = Block::bordered().title("Version");
         if self.focus {
@@ -33,7 +33,9 @@ impl Menu for Version {
         f.render_widget(p, area)
     }
 
-    fn handle_event(&mut self, event: Event) {}
+    fn handle_event(&mut self, event: Event) -> Option<Event> {
+        Some(event)
+    }
 
     fn is_focus(&self) -> bool {
         self.focus
@@ -45,5 +47,9 @@ impl Menu for Version {
 
     fn name(&self) -> String {
         "版本".to_string()
+    }
+
+    fn length(&self) -> u16 {
+        5
     }
 }

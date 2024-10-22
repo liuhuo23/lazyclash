@@ -12,6 +12,7 @@ mod logging;
 mod menu;
 mod mode;
 mod utils;
+mod view;
 
 #[tokio::main]
 async fn main() -> Result<()> {
