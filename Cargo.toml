@@ -42,6 +42,11 @@ tracing = { version = "0.1.40", features = [] }
 tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "serde"] }
 clipboard = "0.5.0"
+reqwest = { version = "*", features = ["json", "rustls-tls"] }
+serde_yaml = "0.9.34"
+anyhow = "1.0.86"
+percent-encoding = "2.1.0"
+
 [build-dependencies]
 anyhow = "1.0.86"
 vergen-gix = { version = "1.0.0", features = ["build", "cargo"] }

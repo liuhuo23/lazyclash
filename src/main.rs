@@ -4,6 +4,7 @@ use color_eyre::Result;
 
 use crate::app::App;
 
+mod action;
 mod app;
 mod cli;
 mod config;
@@ -11,6 +12,7 @@ mod errors;
 mod logging;
 mod menu;
 mod mode;
+mod prfitem;
 mod utils;
 mod view;
 

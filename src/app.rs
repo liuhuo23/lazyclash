@@ -1,7 +1,9 @@
 use crate::{
+    action::Action,
     config::Config,
     menu::{subscription::SubScription, version::Version},
     mode::Mode,
+    prfitem::PrfItem,
     view::View,
 };
 use color_eyre::Result;
@@ -35,10 +37,7 @@ impl App {
             config: Config::new()?,
             menu_index: 0,
             mode: Mode::Version,
-            menus: vec![
-                Box::new(Version::new()),
-                Box::new(SubScription::new()),
-            ],
+            menus: vec![Box::new(Version::new()), Box::new(SubScription::new())],
             info: "提示信息".to_string(),
         })
     }
@@ -111,10 +110,35 @@ impl App {
         let mut terminal = ratatui::init();
         while !self.should_quit {
             terminal.draw(|f| self.draw(f))?;
-            self.handle_events().await?;
+            self.handle_events()?;
+            // 获取当前获取焦点的事件
+            let action = self.current_menus().get_events();
+            self.handle_actions(action).await?;
         }
         self.exit()?;
         debug!("程序退出");
+        Ok(())
+    }
+
+    pub async fn handle_actions(&mut self, action: Option<Action>) -> Result<()> {
+        if action.is_none() {
+            return Ok(());
+        }
+        let action = match action.unwrap() {
+            Action::SubScription(url) => {
+                let res = PrfItem::from_url(&url).await;
+                let action = match res {
+                    Ok(item) => {
+                        let filename = item.file.clone();
+                        let file_data = item.file_data.clone();
+                        Action::SubScriptionResult(item)
+                    }
+                    Err(err) => Action::Error(format!("{err:?}")),
+                };
+                Some(action)
+            }
+            _ => None,
+        };
         Ok(())
     }
 
@@ -122,12 +146,11 @@ impl App {
         &mut self.menus[self.menu_index as usize]
     }
 
-    async fn handle_events(&mut self) -> Result<()> {
+    fn handle_events(&mut self) -> Result<()> {
         let mut event = Some(event::read()?);
         for menu in self.menus.iter_mut() {
             if menu.is_focus() {
                 event = menu.handle_event(event.unwrap().clone());
-                
             }
         }
         if let Some(Event::Key(key)) = event {

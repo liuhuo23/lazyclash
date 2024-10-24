@@ -1,4 +1,7 @@
-use crate::{utils::popup_area, view::View};
+use std::collections::VecDeque;
+
+use crate::{action::Action, utils::popup_area, view::View};
+use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
     layout::Rect,
@@ -19,12 +22,17 @@ pub struct SubScription {
     focus: bool,
     mode: Mode,
     input_popua: bool,
-    pub input_state: InputState,
+    input_state: InputState,
+    input_help: String,
+    actions: VecDeque<Action>,
 }
 
 impl SubScription {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            input_help: "输入".to_string(),
+            ..Default::default()
+        }
     }
 
     pub fn normal_event(&mut self, key: KeyEvent) -> Option<Event> {
@@ -35,6 +43,7 @@ impl SubScription {
                 None
             }
             KeyCode::Char('i') => {
+                self.input_help = "输入中， 按 Esc 退出编辑".to_string();
                 self.mode = Mode::Input;
                 None
             }
@@ -47,9 +56,14 @@ impl SubScription {
         match key.code {
             KeyCode::Esc => {
                 self.mode = Mode::Normal;
+                self.input_help = "输入".to_string();
                 None
             }
-            KeyCode::Enter => None,
+            KeyCode::Enter => {
+                self.actions
+                    .push_back(Action::SubScription(self.input_state.text().to_string()));
+                None
+            }
             _ => {
                 self.input_state.handle_message(key.into());
                 None
@@ -72,7 +86,7 @@ impl View for SubScription {
         let p = Paragraph::new("订阅-详情页");
         f.render_widget(p, area);
         if self.input_popua {
-            let b = Block::bordered().title("输入");
+            let b = Block::bordered().title(self.input_help.clone());
             let area = popup_area(f.area(), 60, 10);
             f.render_widget(Clear, area);
             let input = Input::default();
@@ -110,5 +124,20 @@ impl View for SubScription {
 
     fn length(&self) -> u16 {
         20
+    }
+
+    fn get_events(&mut self) -> Option<Action> {
+        self.actions.pop_front()
+    }
+
+    fn update(&mut self, action: Option<Action>) -> Result<()> {
+        if action.is_none() {
+            return Ok(());
+        }
+
+        match action.unwrap() {
+            Action::SubScriptionResult(item) => Ok(()),
+            _ => Ok(()),
+        }
     }
 }
