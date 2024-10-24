@@ -133,7 +133,7 @@ impl PrfItem {
         let data = resp.text_with_charset("utf-8").await?;
         debug!("{data}");
         Ok(PrfItem {
-            uid: Some("a".to_string()),
+            uid: Some(uuid::Uuid::new_v4().to_string()),
             itype: Some("remote".to_string()),
             desc: None,
             name: filename.clone(),

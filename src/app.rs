@@ -1,13 +1,14 @@
 use crate::{
     action::Action,
     config::{get_subscribe_dir, Config},
+    db,
     menu::{subscription::SubScription, version::Version},
     mode::Mode,
     prfitem::PrfItem,
     view::View,
 };
-use color_eyre::{Result, eyre::eyre};
-use crossterm::event::{self, Event, KeyCode,};
+use color_eyre::{eyre::eyre, Result};
+use crossterm::event::{self, Event, KeyCode};
 use ratatui::crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -131,23 +132,28 @@ impl App {
                         let filename = item.file.clone();
                         let file_data = item.file_data.clone();
                         let mut sub_dir = get_subscribe_dir();
-                        if filename.is_none(){
+                        if filename.is_none() {
                             return Err(eyre!("订阅文件名为空"));
                         }
                         sub_dir.push(format!("{}.yaml", filename.unwrap()));
-                        if file_data.is_none(){
+                        if file_data.is_none() {
                             return Err(eyre!("订阅文件数据为空"));
                         }
                         debug!("订阅文件路径:{}", sub_dir.display());
-                        if !sub_dir.exists(){
+                        if !sub_dir.exists() {
                             tokio::fs::create_dir_all(sub_dir.parent().unwrap()).await?;
                         }
                         tokio::fs::write(sub_dir, file_data.unwrap()).await?;
+                        db::insert_prf_item(&item).await?;
                         Action::SubScriptionResult(item)
                     }
                     Err(err) => Action::Error(format!("{err:?}")),
                 };
                 Some(action)
+            }
+            Action::SubScriptionUpdate => {
+                let items = db::query_prf_item().await?;
+                Some(Action::UpdatePrfList(items))
             }
             _ => None,
         };

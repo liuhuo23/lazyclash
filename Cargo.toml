@@ -9,18 +9,21 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.5", features = [
-    "derive",
-    "cargo",
-    "wrap_help",
-    "unicode",
-    "string",
-    "unstable-styles",
-] }
+anyhow = "1.0.86"
 better-panic = "0.3.0"
+chrono = "0.4"
+clap = {version = "4.4.5", features = [
+  "derive",
+  "cargo",
+  "wrap_help",
+  "unicode",
+  "string",
+  "unstable-styles",
+]}
+clipboard = "0.5.0"
 color-eyre = "0.6.3"
 config = "0.14.0"
-crossterm = { version = "0.28.1", features = ["serde", "event-stream"] }
+crossterm = {version = "0.28.1", features = ["serde", "event-stream"]}
 derive_deref = "1.1.1"
 directories = "5.0.1"
 futures = "0.3.30"
@@ -28,28 +31,28 @@ human-panic = "2.0.1"
 json5 = "0.4.1"
 lazy_static = "1.5.0"
 libc = "0.2.158"
-pretty_assertions = "1.4.0"
-ratatui = { version = "0.28.1", features = ["serde", "macros"] }
-ratatui_input = { git = "https://github.com/liuhuo23/ratatui_input.git", branch = "master" }
-serde = { version = "1.0.208", features = ["derive"] }
-serde_json = "1.0.125"
-signal-hook = "0.3.17"
-strip-ansi-escapes = "0.2.0"
-strum = { version = "0.26.3", features = ["derive"] }
-tokio = { version = "1.39.3", features = ["full"] }
-tokio-util = "0.7.11"
-tracing = { version = "0.1.40", features = [] }
-tracing-error = "0.2.0"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "serde"] }
-clipboard = "0.5.0"
-reqwest = { version = "*", features = ["json", "rustls-tls"] }
-serde_yaml = "0.9.34"
-anyhow = "1.0.86"
 percent-encoding = "2.1.0"
+pretty_assertions = "1.4.0"
+ratatui = {version = "0.28.1", features = ["serde", "macros"]}
+ratatui_input = {git = "https://github.com/liuhuo23/ratatui_input.git", branch = "master"}
+reqwest = {version = "*", features = ["json", "rustls-tls"]}
+serde = {version = "1.0.208", features = ["derive"]}
+serde_json = "1.0.125"
+serde_yaml = "0.9.34"
+signal-hook = "0.3.17"
+sqlx = {version = "0.6.3", features = ["runtime-tokio-native-tls", "macros", "sqlite"]}
+strip-ansi-escapes = "0.2.0"
+strum = {version = "0.26.3", features = ["derive"]}
+tokio = {version = "1.39.3", features = ["full"]}
+tokio-util = "0.7.11"
+tracing = {version = "0.1.40", features = []}
+tracing-error = "0.2.0"
+tracing-subscriber = {version = "0.3.18", features = ["env-filter", "serde"]}
+uuid = "1.11.0"
 
 [build-dependencies]
 anyhow = "1.0.86"
-vergen-gix = { version = "1.0.0", features = ["build", "cargo"] }
+vergen-gix = {version = "1.0.0", features = ["build", "cargo"]}
 
 [[example]]
 name = "scrollbar"
@@ -66,7 +69,6 @@ path = "./examples/statefull_widget.rs"
 [[example]]
 name = "input"
 path = "./examples/input.rs"
-
 
 [[example]]
 name = "action"

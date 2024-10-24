@@ -5,5 +5,7 @@ pub enum Action {
     SubScription(String), // 订阅事件
     SubScriptionResult(PrfItem),
     Error(String),
-    UpdatePrfList(Vec<PrfItem>)
+    SubScriptionUpdate,
+    UpdatePrfList(Vec<PrfItem>),
+    SelectedItem(String),
 }
