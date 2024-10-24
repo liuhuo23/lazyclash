@@ -20,7 +20,6 @@ impl Into<i32> for Mode {
         match self {
             Self::Version => 0,
             Self::Subscription => 1,
-            _ => 0,
         }
     }
 }

@@ -1,9 +1,8 @@
 use crate::utils::help;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_yaml::Mapping;
-use std::fs;
+
 use tracing::debug;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -76,7 +75,7 @@ impl PrfItem {
         }
 
         let header = resp.headers();
-        println!("header: {:?}", header);
+        debug!("header: {:?}", header);
         // parse the Subscription UserInfo
         let extra = match header.get("Subscription-Userinfo") {
             Some(value) => {
@@ -116,13 +115,13 @@ impl PrfItem {
             ),
         };
         debug!("file_name: {:?}", filename);
-        let update_interval = match header.get("profile-update-interval") {
-            Some(value) => match value.to_str().unwrap_or("").parse::<u64>() {
-                Ok(val) => Some(val * 60), // hour -> min
-                Err(_) => None,
-            },
-            None => None,
-        };
+        // let update_interval = match header.get("profile-update-interval") {
+        //     Some(value) => match value.to_str().unwrap_or("").parse::<u64>() {
+        //         Ok(val) => Some(val * 60), // hour -> min
+        //         Err(_) => None,
+        //     },
+        //     None => None,
+        // };
 
         let home = match header.get("profile-web-page-url") {
             Some(value) => {

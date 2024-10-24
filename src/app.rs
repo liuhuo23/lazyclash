@@ -1,13 +1,13 @@
 use crate::{
     action::Action,
-    config::Config,
+    config::{get_subscribe_dir, Config},
     menu::{subscription::SubScription, version::Version},
     mode::Mode,
     prfitem::PrfItem,
     view::View,
 };
-use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use color_eyre::{Result, eyre::eyre};
+use crossterm::event::{self, Event, KeyCode,};
 use ratatui::crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -16,10 +16,10 @@ use ratatui::crossterm::{
 use ratatui::{
     layout::{Constraint, Layout},
     prelude::Rect,
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Block, Paragraph},
     Frame,
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 pub struct App {
     config: Config,
@@ -79,7 +79,7 @@ impl App {
         Ok(())
     }
 
-    fn exit(&self) -> Result<()> {
+    pub fn exit(&self) -> Result<()> {
         crossterm::execute!(
             std::io::stderr(),
             LeaveAlternateScreen,
@@ -115,7 +115,6 @@ impl App {
             let action = self.current_menus().get_events();
             self.handle_actions(action).await?;
         }
-        self.exit()?;
         debug!("程序退出");
         Ok(())
     }
@@ -124,13 +123,26 @@ impl App {
         if action.is_none() {
             return Ok(());
         }
-        let action = match action.unwrap() {
+        let res_action = match action.unwrap() {
             Action::SubScription(url) => {
                 let res = PrfItem::from_url(&url).await;
                 let action = match res {
                     Ok(item) => {
                         let filename = item.file.clone();
                         let file_data = item.file_data.clone();
+                        let mut sub_dir = get_subscribe_dir();
+                        if filename.is_none(){
+                            return Err(eyre!("订阅文件名为空"));
+                        }
+                        sub_dir.push(format!("{}.yaml", filename.unwrap()));
+                        if file_data.is_none(){
+                            return Err(eyre!("订阅文件数据为空"));
+                        }
+                        debug!("订阅文件路径:{}", sub_dir.display());
+                        if !sub_dir.exists(){
+                            tokio::fs::create_dir_all(sub_dir.parent().unwrap()).await?;
+                        }
+                        tokio::fs::write(sub_dir, file_data.unwrap()).await?;
                         Action::SubScriptionResult(item)
                     }
                     Err(err) => Action::Error(format!("{err:?}")),
@@ -139,6 +151,9 @@ impl App {
             }
             _ => None,
         };
+        for menu in self.menus.iter_mut() {
+            menu.update(res_action.clone())?;
+        }
         Ok(())
     }
 

@@ -1,6 +1,4 @@
-use clipboard;
-use clipboard::ClipboardProvider;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, KeyCode,  KeyEventKind,};
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -8,14 +6,14 @@ use ratatui::{
     style::{Color, Style, Stylize},
     symbols::border,
     text::{Line, Text},
-    widgets::*,
     widgets::{
         block::{BlockExt, Position, Title},
-        Block, Borders, Paragraph, Widget, Wrap,
+        Block,  Paragraph, Widget,
     },
     DefaultTerminal, Frame,
 };
-use ratatui_input::{Input, InputState, Message};
+use ratatui_input::InputState;
+
 use std::io;
 
 fn main() -> io::Result<()> {
@@ -31,7 +29,6 @@ pub struct App {
     exit: bool,
     vertrail: u16,
     input_state: InputState,
-    input_mode: Mode,
 }
 
 impl App {
@@ -45,18 +42,7 @@ impl App {
     }
 
     fn draw(&mut self, frame: &mut Frame) {
-        let chunk = Layout::vertical(vec![
-            Constraint::Max(10),
-            Constraint::Max(10),
-            Constraint::Min(10),
-            Constraint::Max(10),
-            Constraint::Max(10),
-            Constraint::Min(10),
-        ])
-        .split(frame.area());
-        let b = Block::bordered()
-            .title("中间")
-            .title_alignment(Alignment::Center);
+        let b = Block::bordered().title("中间").title_alignment(Alignment::Center);
         let w = MyWidget::default().content("hello").block(b);
         frame.render_stateful_widget(w, frame.area(), &mut self.input_state);
     }
@@ -98,22 +84,13 @@ impl Widget for &App {
         ]));
         let block = Block::bordered()
             .title(title.alignment(Alignment::Center))
-            .title(
-                instructions
-                    .alignment(Alignment::Center)
-                    .position(Position::Bottom),
-            )
+            .title(instructions.alignment(Alignment::Center).position(Position::Bottom))
             .border_set(border::THICK);
 
-        let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
+        let counter_text =
+            Text::from(vec![Line::from(vec!["Value: ".into(), self.counter.to_string().yellow()])]);
 
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        Paragraph::new(counter_text).centered().block(block).render(area, buf);
     }
 }
 
@@ -125,15 +102,12 @@ struct MyWidget<'a> {
 
 #[derive(Debug, Default)]
 enum Mode {
-    Input,
     #[default]
     Normal,
 }
 
 impl<'a> MyWidget<'a> {
-    fn new() -> Self {
-        Self::default()
-    }
+    
     fn content(mut self, content: &str) -> Self {
         self.content = content.to_string();
         self
@@ -148,12 +122,7 @@ impl<'a> MyWidget<'a> {
 impl Widget for MyWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let inner = self.block.inner_if_some(area);
-        buf.set_string(
-            inner.x,
-            inner.y,
-            self.content.clone(),
-            Style::default().fg(Color::Red),
-        );
+        buf.set_string(inner.x, inner.y, self.content.clone(), Style::default().fg(Color::Red));
         if let Some(b) = self.block {
             b.render(area, buf);
         }
@@ -162,7 +131,7 @@ impl Widget for MyWidget<'_> {
 
 impl<'a> StatefulWidget for MyWidget<'a> {
     type State = InputState;
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _: &mut Self::State) {
         let inner = self.block.inner_if_some(area);
         let chunks = Layout::vertical(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
             .split(inner);
@@ -173,7 +142,6 @@ impl<'a> StatefulWidget for MyWidget<'a> {
             self.content.clone(),
             Style::default().fg(Color::Red),
         );
-        let b = Block::bordered().title("输入");
         if let Some(b) = self.block {
             b.render(area, buf);
         }

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::{action::Action, utils::popup_area, view::View};
+use crate::{action::Action, utils::popup_area, view::View, prfitem::PrfItem};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
@@ -25,6 +25,7 @@ pub struct SubScription {
     input_state: InputState,
     input_help: String,
     actions: VecDeque<Action>,
+    pref_list: Vec<PrfItem>,
 }
 
 impl SubScription {
@@ -60,6 +61,7 @@ impl SubScription {
                 None
             }
             KeyCode::Enter => {
+                debug!("enter");
                 self.actions
                     .push_back(Action::SubScription(self.input_state.text().to_string()));
                 None
@@ -80,6 +82,7 @@ impl View for SubScription {
         }
         let p = Paragraph::new("订阅").block(b);
         f.render_widget(p, area);
+        // todo!();
     }
 
     fn draw_detail(&mut self, f: &mut Frame, area: Rect) {
@@ -136,7 +139,10 @@ impl View for SubScription {
         }
 
         match action.unwrap() {
-            Action::SubScriptionResult(item) => Ok(()),
+            Action::UpdatePrfList(items) => {
+                self.pref_list = items;
+                Ok(())
+            },
             _ => Ok(()),
         }
     }

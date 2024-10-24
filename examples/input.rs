@@ -1,19 +1,13 @@
+#[allow(dead_code)]
 use color_eyre::{eyre::Ok, Result};
 use ratatui::{
     crossterm::event::{self, Event, KeyCode},
-    layout::{Alignment, Constraint, Layout, Margin},
-    style::{Color, Style, Stylize},
-    symbols::scrollbar,
-    text::{Line, Masked, Span},
-    widgets::{block::Title, Block, Paragraph, StatefulWidget},
+    layout::{Constraint, Layout},
+    widgets::{block::Title, Block, Paragraph},
     DefaultTerminal, Frame,
 };
 use ratatui_input::{Input, InputState};
-use std::{
-    default,
-    time::{Duration, Instant},
-};
-use tracing::debug;
+use std::time::{Duration, Instant};
 
 #[derive(Default)]
 enum AppState {

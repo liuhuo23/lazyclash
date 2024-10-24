@@ -20,9 +20,14 @@ mod view;
 async fn main() -> Result<()> {
     crate::errors::init()?;
     crate::logging::init()?;
-
-    let args = Cli::parse();
+    let _ = Cli::parse();
     let mut app = App::new()?;
-    app.run().await?;
-    Ok(())
+    let res = if let Err(e) = app.run().await {
+        eprint!("{} error: Something went wrong.", env!("CARGO_PKG_NAME"));
+        Err(e)
+    } else {
+        Ok(())
+    };
+    app.exit()?;
+    res
 }

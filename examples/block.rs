@@ -1,7 +1,6 @@
 use std::io;
 
-use color_eyre::owo_colors::OwoColorize;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{self, KeyCode, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -84,11 +83,6 @@ impl App {
         .scroll((self.vertrail, self.horization))
         .block(b);
         frame.render_widget(p, chunk[2]);
-        let b = Block::default()
-            .title(Title::from("Left Title").alignment(Alignment::Left))
-            .title(Title::from("Middle Title").alignment(Alignment::Center))
-            .title(Title::from("Right Title").alignment(Alignment::Right))
-            .borders(Borders::ALL);
         let w = MyWidget {
             content: "自定义".to_string(),
         };

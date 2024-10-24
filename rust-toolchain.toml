@@ -1,0 +1,2 @@
+[toolchain]
+components = ["rustfmt", "clippy"]  # 指定需要安装的额外组件

@@ -33,7 +33,6 @@ impl<'a> TabsState<'a> {
 
 struct App<'a> {
     title: &'a str,
-    should_quit: bool,
     tabs: TabsState<'a>,
 }
 
@@ -41,7 +40,6 @@ impl<'a> App<'a> {
     fn new(title: &'a str) -> Self {
         Self {
             title,
-            should_quit: false,
             tabs: TabsState::new(vec!["tab1", "tab2", "tab3"]),
         }
     }
@@ -52,15 +50,6 @@ impl<'a> App<'a> {
 
     fn on_left(&mut self) {
         self.tabs.previous();
-    }
-
-    fn on_key(&mut self, c: char) {
-        match c {
-            'q' => {
-                self.should_quit = true;
-            }
-            _ => {}
-        }
     }
 }
 
@@ -80,7 +69,6 @@ fn run(mut terminal: DefaultTerminal, first_arg: &str) -> Result<()> {
         terminal.draw(|f| {
             match first_arg {
                 "layout" => layout(f),
-                "styling" => styling(f),
                 _ => draw(f, &mut app),
             };
         })?;
@@ -107,13 +95,6 @@ fn handle_events(app: &mut App) -> std::io::Result<bool> {
     Ok(false)
 }
 
-fn hello_world(frame: &mut Frame) {
-    frame.render_widget(
-        Paragraph::new("Hello world!").block(Block::bordered().title("Greeting")),
-        frame.area(),
-    );
-}
-
 fn layout(frame: &mut Frame) {
     let vertical = Layout::vertical([
         Constraint::Length(1),
@@ -137,8 +118,6 @@ fn layout(frame: &mut Frame) {
     frame.render_widget(Block::bordered().title("Left"), left);
     frame.render_widget(Block::bordered().title("right"), right);
 }
-
-fn styling(frame: &mut Frame) {}
 
 fn draw(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([Constraint::Length(3), Constraint::Min(0)]).split(frame.area());
@@ -166,17 +145,17 @@ fn draw(frame: &mut Frame, app: &mut App) {
     };
 }
 
-fn draw_first_tab(frame: &mut Frame, app: &mut App, area: Rect) {
+fn draw_first_tab(frame: &mut Frame, _: &mut App, area: Rect) {
     let p = Paragraph::new("tab1".to_string()).block(Block::bordered().title("测试"));
     frame.render_widget(p, area)
 }
 
-fn draw_second_tab(frame: &mut Frame, app: &mut App, area: Rect) {
+fn draw_second_tab(frame: &mut Frame, _: &mut App, area: Rect) {
     let p = Paragraph::new("tab2".to_string()).block(Block::bordered().title("测试"));
     frame.render_widget(p, area)
 }
 
-fn draw_third_tab(frame: &mut Frame, app: &mut App, area: Rect) {
+fn draw_third_tab(frame: &mut Frame, _: &mut App, area: Rect) {
     let p = Paragraph::new("tab3".to_string()).block(Block::bordered().title("测试"));
     frame.render_widget(p, area)
 }
