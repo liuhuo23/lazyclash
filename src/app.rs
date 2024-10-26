@@ -24,6 +24,7 @@ use tokio::time::{self, Duration};
 use tracing::debug;
 
 pub struct App {
+    #[allow(dead_code)]
     config: Config,
     should_quit: bool,
     menu_index: i32,
@@ -134,7 +135,7 @@ impl App {
         let res_action = match action.unwrap() {
             Action::SubScription(url) => {
                 let res = PrfItem::from_url(&url).await;
-                let action = match res {
+                match res {
                     Ok(item) => {
                         let filename = item.file.clone();
                         let file_data = item.file_data.clone();
@@ -152,15 +153,22 @@ impl App {
                         }
                         tokio::fs::write(sub_dir, file_data.unwrap()).await?;
                         db::insert_prf_item(&item).await?;
-                        Action::SubScriptionResult(item)
+                        None
                     }
-                    Err(err) => Action::Error(format!("{err:?}")),
-                };
-                Some(action)
+                    Err(err) => Some(Action::Error(format!("{err:?}"))),
+                }
             }
             Action::SubScriptionUpdate => {
                 let items = db::query_prf_item().await?;
                 Some(Action::UpdatePrfList(items))
+            }
+            Action::Error(info) => {
+                debug!(info);
+                None
+            }
+            Action::SelectedItem(uuid) => {
+                debug!("选中了{uuid}");
+                None
             }
             _ => None,
         };
@@ -236,11 +244,8 @@ impl App {
         }
     }
     fn draw_right(&mut self, f: &mut Frame, area: Rect) {
-        let b = Block::bordered();
-        let inner_area = b.inner(area);
         let index: i32 = self.mode.into();
-        f.render_widget(b, area);
-        self.menus[index as usize].draw_detail(f, inner_area);
+        self.menus[index as usize].draw_detail(f, area);
     }
 
     fn draw_bottom_info(&mut self, f: &mut Frame, area: Rect) {

@@ -1,4 +1,4 @@
-use std::{clone, collections::VecDeque};
+use std::collections::VecDeque;
 
 use crate::{action::Action, prfitem::PrfItem, utils::popup_area, view::View};
 use color_eyre::Result;
@@ -7,7 +7,7 @@ use ratatui::{
     layout::Rect,
     style::{
         palette::tailwind::{BLUE, GREEN, SLATE},
-        Color, Modifier, Style, Stylize,
+        Color, Modifier, Style, Styled, Stylize,
     },
     text::Line,
     widgets::{Block, Clear, HighlightSpacing, List, ListItem, ListState, Paragraph},
@@ -28,6 +28,7 @@ enum Mode {
     Input,
     #[default]
     Normal,
+    Detail,
 }
 
 #[derive(Default)]
@@ -51,6 +52,7 @@ pub struct SubScription {
     input_help: String,
     actions: VecDeque<Action>,
     pref: PrfItemList,
+    selected_index: usize,
 }
 
 impl SubScription {
@@ -64,10 +66,6 @@ impl SubScription {
         }
     }
 
-    fn select_none(&mut self) {
-        self.pref.state.select(None);
-    }
-
     fn select_next(&mut self) {
         self.pref.state.select_next();
     }
@@ -77,10 +75,9 @@ impl SubScription {
 
     fn selected(&mut self) {
         if let Some(i) = self.pref.state.selected() {
-            let item = &mut self.pref.items[i];
-            item.selected = Some(true);
-            self.actions
-                .push_back(Action::SelectedItem(item.uid.clone().unwrap()));
+            self.selected_index = i;
+            // self.actions
+            //     .push_back(Action::SelectedItem(item.uid.clone().unwrap()));
         }
     }
 
@@ -104,8 +101,13 @@ impl SubScription {
                 self.select_previous();
                 None
             }
-            KeyCode::Backspace => {
+            KeyCode::Char(' ') => {
                 self.selected();
+                debug!("触发选中");
+                None
+            }
+            KeyCode::Enter => {
+                self.mode = Mode::Detail;
                 None
             }
             _ => Some(Event::Key(key)),
@@ -132,6 +134,16 @@ impl SubScription {
             }
         }
     }
+
+    pub fn detail_event(&mut self, key: KeyEvent) -> Option<Event> {
+        match key.code {
+            KeyCode::Esc => {
+                self.mode = Mode::Normal;
+                None
+            }
+            _ => None,
+        }
+    }
 }
 
 impl View for SubScription {
@@ -145,9 +157,19 @@ impl View for SubScription {
             .items
             .iter()
             .enumerate()
-            .map(|(i, todo_item)| {
-                let color = alternate_colors(i);
-                ListItem::from(todo_item).bg(color)
+            .map(|(i, item)| {
+                let line = if self.selected_index == i {
+                    Line::styled(
+                        format!(" ✓ {}", item.name.as_ref().map_or("config", |f| &f)),
+                        COMPLETED_TEXT_FG_COLOR,
+                    )
+                } else {
+                    Line::styled(
+                        format!(" ☐ {}", item.name.as_ref().map_or("config", |f| &f)),
+                        TEXT_FG_COLOR,
+                    )
+                };
+                ListItem::new(line)
             })
             .collect();
         let list = List::new(items)
@@ -160,6 +182,13 @@ impl View for SubScription {
     }
 
     fn draw_detail(&mut self, f: &mut Frame, area: Rect) {
+        let b = match self.mode {
+            Mode::Normal | Mode::Input => Block::bordered(),
+            Mode::Detail => Block::bordered().border_style(Color::Yellow),
+        };
+        let inner_area = b.inner(area);
+        f.render_widget(b, area);
+        let area = inner_area;
         if self.input_popua {
             let b = Block::bordered().title(self.input_help.clone());
             let area = popup_area(f.area(), 60, 10);
@@ -191,6 +220,10 @@ impl View for SubScription {
             let handle_event = match self.mode {
                 Mode::Normal => self.normal_event(key),
                 Mode::Input => self.input_event(key),
+                Mode::Detail => {
+                    self.detail_event(key);
+                    self.normal_event(key)
+                },
             };
             return handle_event;
         }
@@ -248,10 +281,10 @@ impl From<&PrfItem> for ListItem<'_> {
     }
 }
 
-const fn alternate_colors(i: usize) -> Color {
-    if i % 2 == 0 {
-        NORMAL_ROW_BG
-    } else {
-        ALT_ROW_BG_COLOR
-    }
-}
+// const fn alternate_colors(i: usize) -> Color {
+//     if i % 2 == 0 {
+//         NORMAL_ROW_BG
+//     } else {
+//         ALT_ROW_BG_COLOR
+//     }
+// }

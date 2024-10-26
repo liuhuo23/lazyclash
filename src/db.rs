@@ -6,7 +6,6 @@ use chrono::Utc;
 use color_eyre::Result;
 use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePoolOptions, FromRow, Pool, Row, Sqlite};
 use tracing::debug;
-use tracing_subscriber::fmt::format;
 
 pub fn get_db_file() -> Result<PathBuf> {
     let mut db_file = get_data_dir();

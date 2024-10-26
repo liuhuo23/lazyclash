@@ -1,4 +1,4 @@
-use crossterm::event::{Event, KeyEvent};
+use crossterm::event::Event;
 use ratatui::{
     layout::Rect,
     style::{Color, Style},

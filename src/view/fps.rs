@@ -73,7 +73,7 @@ impl View for FpsCounter {
         "FpsCount".to_string()
     }
 
-    fn update(&mut self, action: Option<crate::action::Action>) -> Result<()> {
+    fn update(&mut self, _: Option<crate::action::Action>) -> Result<()> {
         Ok(())
     }
 
