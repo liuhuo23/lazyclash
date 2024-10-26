@@ -5,7 +5,7 @@ use crate::{
     menu::{subscription::SubScription, version::Version},
     mode::Mode,
     prfitem::PrfItem,
-    view::View,
+    view::{fps::FpsCounter, View},
 };
 use color_eyre::{eyre::eyre, Result};
 use crossterm::event::{self, Event, KeyCode};
@@ -20,6 +20,7 @@ use ratatui::{
     widgets::{Block, Paragraph},
     Frame,
 };
+use tokio::time::{self, Duration};
 use tracing::debug;
 
 pub struct App {
@@ -38,7 +39,11 @@ impl App {
             config: Config::new()?,
             menu_index: 0,
             mode: Mode::Version,
-            menus: vec![Box::new(Version::new()), Box::new(SubScription::new())],
+            menus: vec![
+                Box::new(Version::new()),
+                Box::new(SubScription::new()),
+                Box::new(FpsCounter::default()),
+            ],
             info: "提示信息".to_string(),
         })
     }
@@ -109,7 +114,9 @@ impl App {
         self.enter()?;
         self.set_focus();
         let mut terminal = ratatui::init();
+        let mut interval = time::interval(Duration::from_millis(250));
         while !self.should_quit {
+            interval.tick().await; // 等待下一个间隔时间点
             terminal.draw(|f| self.draw(f))?;
             self.handle_events()?;
             // 获取当前获取焦点的事件

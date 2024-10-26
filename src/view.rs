@@ -1,6 +1,7 @@
 use color_eyre::Result;
 use crossterm::event::Event;
 use ratatui::{layout::Rect, Frame};
+pub mod fps;
 
 use crate::action::Action;
 pub trait View {
